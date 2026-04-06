@@ -10,10 +10,10 @@
  */
 
 // Database connection settings
-define('DB_HOST', getenv('MYSQLHOST'));        // Database server hostname/IP
-define('DB_USER', getenv('MYSQLUSER')); // Database username
-define('DB_PASS', getenv('MYSQLPASSWORD'));     // Database password
-define('DB_NAME', getenv('MYSQLDATABASE'));      // Database name
+define('DB_HOST', getenv('MYSQLHOST') ?: '');       // fallback empty string
+define('DB_USER', getenv('MYSQLUSER') ?: '');
+define('DB_PASS', getenv('MYSQLPASSWORD') ?: '');
+define('DB_NAME', getenv('MYSQLDATABASE') ?: '');// Database name
 
 // Railway injects MYSQLHOST, MYSQLUSER, MYSQLPASSWORD, MYSQLDATABASE
 // For other providers, set DB_HOST, DB_USER, DB_PASS, DB_NAME in your environment
