@@ -2,17 +2,15 @@
 /**
  * Newsletter Rotator Configuration
  *
- * This file contains database configuration constants used throughout the application.
- * Modify these values to match your database setup.
- *
- * @author Newsletter Rotator Team
- * @version 1.0
+ * Reads database settings from environment variables if available.
+ * Provides fallback for local testing.
  */
 
-// Database connection settings
-define('DB_HOST', 'mysql.railway.internal');
-define('DB_USER', 'root');
-define('DB_PASS', 'CXXQhBuiOkAcyUQWgtwiaxMxLZjpkzVS');
-define('DB_NAME', 'railway');
+define('DB_HOST', getenv('MYSQLHOST') ?: '127.0.0.1');       // fallback to local MySQL
+define('DB_USER', getenv('MYSQLUSER') ?: 'root');
+define('DB_PASS', getenv('MYSQLPASSWORD') ?: '');
+define('DB_NAME', getenv('MYSQLDATABASE') ?: 'newsletter');
 
+// Debug: uncomment to check if env vars are loaded correctly
+// var_dump(DB_HOST, DB_USER, DB_PASS, DB_NAME); die();
 ?>
