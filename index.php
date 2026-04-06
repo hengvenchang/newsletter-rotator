@@ -16,7 +16,11 @@
 
 // Include required files
 require_once 'helpers/helpers.php';
+
 require_once 'services/Rotator.php';
+
+$cappedProvidersList = [];
+$nextHourWarning = false;
 
 // Initialize the rotator service
 $rotator = new Rotator();
