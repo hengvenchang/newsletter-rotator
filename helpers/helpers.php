@@ -21,7 +21,7 @@ require_once __DIR__ . '/../config.php';
  * @throws Exception If connection fails
  */
 function getDBConnection() {
-    $conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME, null, DB_SOCKET);
+    $conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
     if ($conn->connect_error) {
         writeLog("Connection failed: " . $conn->connect_error, 'ERROR');
         die("Connection failed: " . $conn->connect_error);
