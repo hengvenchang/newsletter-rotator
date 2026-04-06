@@ -1,0 +1,22 @@
+# Docker Compose configuration for Newsletter Rotator
+# This sets up a MySQL database container for the application
+
+version: '3.9'
+
+services:
+  mysql:
+    image: mysql:8.0                    # MySQL 8.0 database server
+    container_name: my_mysql            # Container name for easy reference
+    restart: unless-stopped             # Auto-restart unless manually stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: 5up3r53cr3t  # Root password for MySQL
+      MYSQL_DATABASE: newsletter        # Default database to create
+      MYSQL_USER: newsletter-rotator    # Application user
+      MYSQL_PASSWORD: 8np3r52cr8u       # Application user password
+    ports:
+      - "3306:3306"                     # Map container port 3306 to host port 3306
+    volumes:
+          - ./db-init:/docker-entrypoint-initdb.d
+
+volumes:
+  mysql_data:                          # Named volume for MySQL data persistence
