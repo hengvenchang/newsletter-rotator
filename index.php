@@ -36,21 +36,36 @@ if (isset($_GET['reset'])) {
 }
 
 try {
-    for ($i = 0; $i < 50; $i++) { // Process up to 50 batches
+    $hour = 1;
+    $totalBatches = 0;
+    $maxBatches = 300; // Run up to 300 batches (1500 emails) to show multi-hour simulation
+    
+    while ($totalBatches < $maxBatches) {
         $result = $rotator->getNextBatch(5);
         $batch = $result['batch'];
+        $totalBatches++;
         
         if (empty($batch)) {
-            // Check if we hit rate limits
-            if (!empty($result['capped_providers'])) {
-                $nextHourWarning = true;
-                foreach ($result['capped_providers'] as $provider) {
-                    if (!isset($cappedProvidersList[$provider['domain']])) {
-                        $cappedProvidersList[$provider['domain']] = $provider;
-                    }
-                }
+            // Batch is empty - all providers are capped OR no more subscribers
+            $availableCount = count($result['available_providers']);
+            $cappedCount = count($result['capped_providers']);
+            
+            if ($cappedCount > 0 && $availableCount === 0 && $totalBatches < $maxBatches) {
+                // All providers capped - simulate next hour
+                $rotator->resetSent(); // Reset for next hour simulation
+                $hour++;
+                $batches[] = [
+                    'data' => [],
+                    'providers' => [],
+                    'capped' => [],
+                    'isHourSeparator' => true,
+                    'hour' => $hour
+                ];
+                continue;
+            } else {
+                // No more subscribers or max batches reached
+                break;
             }
-            break;
         }
         
         $batchData = [];
@@ -72,7 +87,8 @@ try {
         $batches[] = [
             'data' => $batchData,
             'providers' => array_keys($batchProviders),
-            'capped' => $result['capped_providers']
+            'capped' => $result['capped_providers'],
+            'hour' => $hour
         ];
     }
 } catch (Exception $e) {
@@ -231,20 +247,6 @@ $cappedJson = json_encode($cappedProvidersList);
                     </div>
                 </div>
 
-                <!-- Statistics Card -->
-                <div class="card shadow-sm mb-4 bg-white">
-                    <div class="card-header bg-info text-white">
-                        <h5 class="mb-0">
-                            <i class="bi bi-graph-up me-2"></i>
-                            Rotation Statistics
-                        </h5>
-                    </div>
-                    <div class="card-body">
-                        <div id="stats-content">
-                            <p class="text-muted">Loading statistics...</p>
-                        </div>
-                    </div>
-                </div>
 
                 <!-- Progress Bar -->
                 <div class="card shadow-sm mb-4">
@@ -271,7 +273,7 @@ $cappedJson = json_encode($cappedProvidersList);
                             <i class="bi bi-play-circle-fill text-success me-2"></i>
                             Live Rotation Test
                         </h2>
-                        <small class="text-muted">Batches are displayed with 2-second intervals (simulating hourly sends)</small>
+                        <small class="text-muted">Batches displayed every 2 seconds across multiple simulated hours with automatic hourly limit resets</small>
                     </div>
                     <div class="card-body">
                         <div id="batch-container">
@@ -378,6 +380,36 @@ $cappedJson = json_encode($cappedProvidersList);
             }
 
             const batchInfo = batches[index];
+            
+            // Handle hour separator
+            if (batchInfo.isHourSeparator) {
+                // Reset hourly counts for new hour
+                Object.keys(currentDomainCounts).forEach(domain => {
+                    currentDomainCounts[domain] = 0;
+                });
+                
+                const hourSeparatorHTML = `
+                    <div class='my-4'>
+                        <div class='d-flex align-items-center'>
+                            <div class='flex-grow-1'><hr class='my-0'></div>
+                            <div class='px-3 text-center'>
+                                <h4 class='mb-0'>
+                                    <i class="bi bi-clock-fill text-warning me-2"></i>
+                                    Hour ${batchInfo.hour}
+                                </h4>
+                                <small class="text-muted">Hourly limits reset • Resuming sends</small>
+                            </div>
+                            <div class='flex-grow-1'><hr class='my-0'></div>
+                        </div>
+                    </div>
+                `;
+                const container = document.getElementById('batch-container');
+                const hourElement = document.createElement('div');
+                hourElement.innerHTML = hourSeparatorHTML;
+                container.appendChild(hourElement);
+                return;
+            }
+            
             const batch = batchInfo.data;
             const batchNumber = index + 1;
             
@@ -405,6 +437,7 @@ $cappedJson = json_encode($cappedProvidersList);
                             <i class='bi bi-envelope me-2 text-primary'></i>
                             Batch ${batchNumber}
                             <span class='badge bg-primary ms-2'>5 emails</span>
+                            <span class='badge bg-secondary ms-1'>Hour ${batchInfo.hour || 1}</span>
                         </h5>
                     </div>
                     ${cappedWarning}
@@ -449,12 +482,27 @@ $cappedJson = json_encode($cappedProvidersList);
             }, 10);
 
             // Update progress
-            const totalEmails = (index + 1) * 5;
-            const percentage = Math.round((index + 1) / batches.length * 100);
+            let realBatchCount = 0;
+            let totalEmails = 0;
+            for (let i = 0; i <= index; i++) {
+                if (!batches[i].isHourSeparator) {
+                    realBatchCount++;
+                    totalEmails += 5;
+                }
+            }
+            
+            let totalRealBatches = 0;
+            for (let i = 0; i < batches.length; i++) {
+                if (!batches[i].isHourSeparator) {
+                    totalRealBatches++;
+                }
+            }
+            
+            const percentage = Math.round((realBatchCount / totalRealBatches) * 100);
             document.getElementById('progress-bar').style.width = percentage + '%';
             document.getElementById('progress-bar').textContent = percentage + '%';
-            document.getElementById('batch-count').textContent = 'Batch ' + batchNumber;
-            document.getElementById('total-batches').textContent = batches.length;
+            document.getElementById('batch-count').textContent = 'Batch ' + realBatchCount;
+            document.getElementById('total-batches').textContent = totalRealBatches;
             document.getElementById('email-count').textContent = totalEmails;
 
             // Update rate limiting info dynamically
