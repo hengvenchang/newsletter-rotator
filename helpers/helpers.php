@@ -51,15 +51,33 @@ function getDomain($email) {
  * @return string The normalized domain name
  */
 function normalizeDomain($domain) {
-    // Normalize providers: hotmail.com, hotmail.co.uk, outlook.com are same
     $domain = strtolower($domain);
+    
+    // Normalize Hotmail/Outlook variants
     if (preg_match('/hotmail\./', $domain) || preg_match('/outlook\./', $domain)) {
         return 'hotmail';
     }
+    
     // Normalize all Gmail variants: gmail.com, gmail.de, gmail.co.uk, googlemail.com, etc.
     if (preg_match('/^gmail\./', $domain) || preg_match('/googlemail\./', $domain)) {
         return 'gmail';
     }
+    
+    // Normalize all ProtonMail variants: protonmail.com, protonmail.co.uk, protonmail.de, etc.
+    if (preg_match('/^protonmail\./', $domain)) {
+        return 'protonmail';
+    }
+    
+    // Normalize all GMX variants: gmx.com, gmx.de, gmx.co.uk, etc.
+    if (preg_match('/^gmx\./', $domain)) {
+        return 'gmx';
+    }
+    
+    // Normalize all mydomain variants: mydomain.com, mydomain.co.uk, etc.
+    if (preg_match('/^mydomain\./', $domain)) {
+        return 'mydomain';
+    }
+    
     return $domain;
 }
 
