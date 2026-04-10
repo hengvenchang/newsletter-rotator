@@ -97,7 +97,20 @@ class Rotator {
     private function getAllProviderCounts() {
         $counts = [];
         try {
-            $sql = "SELECT LOWER(SUBSTRING_INDEX(s.email, '@', -1)) as domain, COUNT(*) as count 
+            $sql = "SELECT 
+                    CASE 
+                        WHEN s.email LIKE '%@gmail.%' THEN 'gmail'
+                        WHEN s.email LIKE '%@googlemail.%' THEN 'gmail'
+                        WHEN s.email LIKE '%@hotmail.%' THEN 'hotmail'
+                        WHEN s.email LIKE '%@outlook.%' THEN 'hotmail'
+                        WHEN s.email LIKE '%@protonmail.%' THEN 'protonmail'
+                        WHEN s.email LIKE '%@gmx.%' THEN 'gmx'
+                        WHEN s.email LIKE '%@mydomain.%' THEN 'mydomain'
+                        WHEN s.email LIKE '%@seznam.%' THEN 'seznam'
+                        WHEN s.email LIKE '%@tuta.%' THEN 'tuta'
+                        WHEN s.email LIKE '%@yahoo.%' THEN 'yahoo'
+                        ELSE LOWER(SUBSTRING_INDEX(s.email, '@', -1))
+                    END as domain, COUNT(*) as count 
                     FROM sent_emails se
                     JOIN subscribers s ON se.subscriber_id = s.id
                     WHERE DATE_ADD(se.sent_at, INTERVAL 1 HOUR) > NOW()
