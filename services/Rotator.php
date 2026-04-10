@@ -121,7 +121,7 @@ class Rotator {
         // Normalize domains using existing normalizeDomain function
         $counts = [];
         foreach ($rawCounts as $domain => $count) {
-            $normalized = normalizeDomain('test@' . $domain);
+            $normalized = normalizeDomain($domain);
             if (!isset($counts[$normalized])) {
                 $counts[$normalized] = 0;
             }
