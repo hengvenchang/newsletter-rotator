@@ -189,7 +189,7 @@ class Rotator {
             $batch = [];
             $domainQueues = [];
             $domains = $availableProviders;
-            sort($domains); // Sort for consistent ordering
+            shuffle($domains); // Randomize to avoid bias against alphabetically-last providers
 
             // Create a queue of unsent subscribers for each available domain
             foreach ($domains as $domain) {
