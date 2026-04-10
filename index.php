@@ -273,7 +273,9 @@ $cappedJson = json_encode($cappedProvidersList);
                             <i class="bi bi-play-circle-fill text-success me-2"></i>
                             Live Rotation Test
                         </h2>
-                        <small class="text-muted">Batches displayed every 2 seconds across multiple simulated hours with automatic hourly limit resets</small>
+                        <small class="text-muted">
+                            📧 670 emails | 100/provider/hour | ~2 hours total | Fair rotation every 2 seconds
+                        </small>
                     </div>
                     <div class="card-body">
                         <div id="batch-container">
