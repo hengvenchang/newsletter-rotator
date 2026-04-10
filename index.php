@@ -46,36 +46,9 @@ try {
         $totalBatches++;
         
         if (empty($batch)) {
-            // Batch is empty - all providers are capped OR no more subscribers
-            $availableCount = count($result['available_providers']);
-            $cappedCount = count($result['capped_providers']);
-            
-            if ($cappedCount > 0 && $availableCount === 0 && $totalBatches < $maxBatches) {
-                // All providers capped - show capped status before reset
-                $batches[] = [
-                    'data' => [],
-                    'providers' => [],
-                    'capped' => $result['capped_providers'],
-                    'isCappedStatus' => true,
-                    'hour' => $hour,
-                    'nextHour' => $hour + 1
-                ];
-                
-                // Then show hour separator (reset)
-                $rotator->resetSent(); // Reset for next hour simulation
-                $hour++;
-                $batches[] = [
-                    'data' => [],
-                    'providers' => [],
-                    'capped' => [],
-                    'isHourSeparator' => true,
-                    'hour' => $hour
-                ];
-                continue;
-            } else {
-                // No more subscribers or max batches reached
-                break;
-            }
+            // Batch is empty - genuinely no more unsent subscribers from any provider
+            // (Not blocked, just truly done or max batches reached)
+            break;
         }
         
         $batchData = [];
