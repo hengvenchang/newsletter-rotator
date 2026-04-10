@@ -44,7 +44,8 @@ function getDomain($email) {
  * Normalizes email domains to group similar providers
  *
  * This function groups related email providers under common names to ensure
- * proper rotation across provider families (e.g., hotmail.com, outlook.com → 'hotmail')
+ * proper rotation across provider families (e.g., hotmail.com, outlook.com → 'hotmail',
+ * gmail.de, gmail.co.uk → 'gmail')
  *
  * @param string $domain The domain to normalize
  * @return string The normalized domain name
@@ -55,8 +56,8 @@ function normalizeDomain($domain) {
     if (preg_match('/hotmail\./', $domain) || preg_match('/outlook\./', $domain)) {
         return 'hotmail';
     }
-    // Add more normalizations if needed, e.g., gmail.com, googlemail.com
-    if (preg_match('/googlemail\./', $domain)) {
+    // Normalize all Gmail variants: gmail.com, gmail.de, gmail.co.uk, googlemail.com, etc.
+    if (preg_match('/^gmail\./', $domain) || preg_match('/googlemail\./', $domain)) {
         return 'gmail';
     }
     return $domain;
