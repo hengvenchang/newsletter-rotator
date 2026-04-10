@@ -90,27 +90,17 @@ class Rotator {
     }
 
     /**
-     * Gets hourly counts for all providers in one query
+     * Gets hourly counts for all providers, normalizing domains dynamically via PHP.
+     * This approach uses a single source of truth (normalizeDomain function)
+     * so new providers are automatically supported without SQL changes.
      *
-     * @return array Associative array of domain => count
+     * @return array Associative array of normalized domain => count
      */
     private function getAllProviderCounts() {
-        $counts = [];
+        $rawCounts = [];
         try {
-            $sql = "SELECT 
-                    CASE 
-                        WHEN s.email LIKE '%@gmail.%' THEN 'gmail'
-                        WHEN s.email LIKE '%@googlemail.%' THEN 'gmail'
-                        WHEN s.email LIKE '%@hotmail.%' THEN 'hotmail'
-                        WHEN s.email LIKE '%@outlook.%' THEN 'hotmail'
-                        WHEN s.email LIKE '%@protonmail.%' THEN 'protonmail'
-                        WHEN s.email LIKE '%@gmx.%' THEN 'gmx'
-                        WHEN s.email LIKE '%@mydomain.%' THEN 'mydomain'
-                        WHEN s.email LIKE '%@seznam.%' THEN 'seznam'
-                        WHEN s.email LIKE '%@tuta.%' THEN 'tuta'
-                        WHEN s.email LIKE '%@yahoo.%' THEN 'yahoo'
-                        ELSE LOWER(SUBSTRING_INDEX(s.email, '@', -1))
-                    END as domain, COUNT(*) as count 
+            // Fetch raw domains - simple, maintainable query
+            $sql = "SELECT LOWER(SUBSTRING_INDEX(s.email, '@', -1)) as domain, COUNT(*) as count 
                     FROM sent_emails se
                     JOIN subscribers s ON se.subscriber_id = s.id
                     WHERE DATE_ADD(se.sent_at, INTERVAL 1 HOUR) > NOW()
@@ -118,13 +108,24 @@ class Rotator {
             $result = $this->conn->query($sql);
             if ($result === false) {
                 writeLog('Error in getAllProviderCounts: ' . $this->conn->error, 'ERROR');
-                return $counts;
+                return [];
             }
             while ($row = $result->fetch_assoc()) {
-                $counts[$row['domain']] = (int)$row['count'];
+                $rawCounts[$row['domain']] = (int)$row['count'];
             }
         } catch (Exception $e) {
             writeLog('Exception in getAllProviderCounts: ' . $e->getMessage(), 'ERROR');
+            return [];
+        }
+        
+        // Normalize domains using existing normalizeDomain function
+        $counts = [];
+        foreach ($rawCounts as $domain => $count) {
+            $normalized = normalizeDomain('test@' . $domain);
+            if (!isset($counts[$normalized])) {
+                $counts[$normalized] = 0;
+            }
+            $counts[$normalized] += $count;
         }
         return $counts;
     }
