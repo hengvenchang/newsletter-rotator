@@ -51,7 +51,17 @@ try {
             $cappedCount = count($result['capped_providers']);
             
             if ($cappedCount > 0 && $availableCount === 0 && $totalBatches < $maxBatches) {
-                // All providers capped - simulate next hour
+                // All providers capped - show capped status before reset
+                $batches[] = [
+                    'data' => [],
+                    'providers' => [],
+                    'capped' => $result['capped_providers'],
+                    'isCappedStatus' => true,
+                    'hour' => $hour,
+                    'nextHour' => $hour + 1
+                ];
+                
+                // Then show hour separator (reset)
                 $rotator->resetSent(); // Reset for next hour simulation
                 $hour++;
                 $batches[] = [
@@ -100,6 +110,7 @@ try {
 $batchesJson = json_encode($batches);
 $statsJson = json_encode($domainStats);
 $cappedJson = json_encode($cappedProvidersList);
+$hourlyLimitJs = $rotator->getHourlyLimit();
 ?>
 
 <!DOCTYPE html>
@@ -274,7 +285,7 @@ $cappedJson = json_encode($cappedProvidersList);
                             Live Rotation Test
                         </h2>
                         <small class="text-muted">
-                            📧 670 emails | 100/provider/hour | ~2 hours total | One batch every 2 seconds
+                            📧 670 emails | 10/provider/hour (test mode) | One batch every 2 seconds
                         </small>
                     </div>
                     <div class="card-body">
@@ -364,6 +375,7 @@ $cappedJson = json_encode($cappedProvidersList);
         const batches = <?php echo $batchesJson; ?>;
         const initialDomainStats = <?php echo $statsJson; ?>;
         const cappedProviders = <?php echo $cappedJson; ?>;
+        const hourlyLimit = <?php echo $hourlyLimitJs; ?>;
         
         // Create a mutable copy to track live counts as batches are processed
         const currentDomainCounts = {};
@@ -382,6 +394,31 @@ $cappedJson = json_encode($cappedProvidersList);
             }
 
             const batchInfo = batches[index];
+            
+            // Handle all providers capped status
+            if (batchInfo.isCappedStatus) {
+                const cappedList = batchInfo.capped.map(p => `<li>${p.domain}: ${p.count}/${p.limit}</li>`).join('');
+                const cappedStatusHTML = `
+                    <div class='my-4'>
+                        <div class='alert alert-warning p-4 text-center'>
+                            <div class='mb-3'>
+                                <i class="bi bi-pause-circle-fill" style="font-size: 2rem;"></i>
+                            </div>
+                            <h4 class='mb-3'>Hourly Limits Reached</h4>
+                            <p class='mb-2'>All providers have hit their 10/hour limit</p>
+                            <ul class='list-unstyled small mb-3'>${cappedList}</ul>
+                            <p class='mb-0'>
+                                <small class='text-muted'>Resetting in 3 seconds... Next hour starting →</small>
+                            </p>
+                        </div>
+                    </div>
+                `;
+                const container = document.getElementById('batch-container');
+                const statusElement = document.createElement('div');
+                statusElement.innerHTML = cappedStatusHTML;
+                container.appendChild(statusElement);
+                return;
+            }
             
             // Handle hour separator
             if (batchInfo.isHourSeparator) {
@@ -487,7 +524,7 @@ $cappedJson = json_encode($cappedProvidersList);
             let realBatchCount = 0;
             let totalEmails = 0;
             for (let i = 0; i <= index; i++) {
-                if (!batches[i].isHourSeparator) {
+                if (!batches[i].isHourSeparator && !batches[i].isCappedStatus) {
                     realBatchCount++;
                     totalEmails += 5;
                 }
@@ -495,7 +532,7 @@ $cappedJson = json_encode($cappedProvidersList);
             
             let totalRealBatches = 0;
             for (let i = 0; i < batches.length; i++) {
-                if (!batches[i].isHourSeparator) {
+                if (!batches[i].isHourSeparator && !batches[i].isCappedStatus) {
                     totalRealBatches++;
                 }
             }
@@ -513,11 +550,22 @@ $cappedJson = json_encode($cappedProvidersList);
             currentBatch = index + 1;
         }
 
-        // Render all batches with delays
-        batches.forEach((_, index) => {
+        // Render all batches with delays (add extra delay for capped status and hour separators)
+        let cumulativeDelay = 0;
+        batches.forEach((batch, index) => {
+            const delay = cumulativeDelay;
+            cumulativeDelay += displayInterval;
+            
+            // Add extra delay for capped status (3 seconds) and hour separator (2 seconds)
+            if (batch.isCappedStatus) {
+                cumulativeDelay += 3000; // Extra 3 seconds to show capped message
+            } else if (batch.isHourSeparator) {
+                cumulativeDelay += 2000; // Extra 2 seconds to show hour separator
+            }
+            
             setTimeout(() => {
                 renderBatch(index);
-            }, index * displayInterval);
+            }, delay);
         });
 
         // Render rate limit info - now uses current counts instead of initial stats
@@ -536,7 +584,6 @@ $cappedJson = json_encode($cappedProvidersList);
                         <tbody>
             `;
 
-            const limit = 100;
             // Get all unique domains from both initial stats and current counts
             const allDomains = new Set([
                 ...Object.keys(initialDomainStats),
@@ -547,17 +594,17 @@ $cappedJson = json_encode($cappedProvidersList);
             
             sortedDomains.forEach(domain => {
                 const count = currentDomainCounts[domain] || 0;
-                const isCapped = count >= limit;
+                const isCapped = count >= hourlyLimit;
                 const status = isCapped 
                     ? '<span class="badge bg-danger"><i class="bi bi-exclamation-circle me-1"></i>CAPPED</span>'
-                    : `<span class="badge bg-success">Available (${limit - count} left)</span>`;
+                    : `<span class="badge bg-success">Available (${hourlyLimit - count} left)</span>`;
                 
                 const countClass = isCapped ? 'limit-reached' : '';
                 html += `
                     <tr>
                         <td><strong>${domain}</strong></td>
                         <td class='text-center ${countClass}'>${count}</td>
-                        <td class='text-center'>${limit}</td>
+                        <td class='text-center'>${hourlyLimit}</td>
                         <td class='text-center'>${status}</td>
                     </tr>
                 `;

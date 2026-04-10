@@ -26,8 +26,8 @@ class Rotator {
     /** @var mysqli Database connection */
     private $conn;
     
-    /** @var int Hourly limit per provider (100 emails/hour is safe) */
-    private $hourlyLimit = 100;
+    /** @var int Hourly limit per provider (10 for testing, normally 100 emails/hour) */
+    private $hourlyLimit = 10;
     
     /** @var int Current hour (in second increments for grouping) */
     private $currentHour;
