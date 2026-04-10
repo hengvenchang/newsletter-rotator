@@ -397,25 +397,48 @@ $hourlyLimitJs = $rotator->getHourlyLimit();
             
             // Handle all providers capped status
             if (batchInfo.isCappedStatus) {
-                const cappedList = batchInfo.capped.map(p => `<li>${p.domain}: ${p.count}/${p.limit}</li>`).join('');
+                const cappedList = batchInfo.capped.map(p => `<li class='text-danger'><strong>${p.domain}</strong>: ${p.count}/${p.limit} ❌</li>`).join('');
+                
+                // Build list of available providers from the rate limit table
+                const allDomains = new Set([
+                    ...Object.keys(initialDomainStats),
+                    ...Object.keys(currentDomainCounts)
+                ]);
+                const availableDomains = [];
+                allDomains.forEach(domain => {
+                    const count = currentDomainCounts[domain] || 0;
+                    if (count < hourlyLimit) {
+                        availableDomains.push(`<li class='text-success'><strong>${domain}</strong>: ${count}/${hourlyLimit} (${hourlyLimit - count} remaining)</li>`);
+                    }
+                });
+                
                 const cappedStatusHTML = `
                     <div class='my-4'>
-                        <div class='alert alert-warning p-4 text-center'>
-                            <div class='mb-3'>
+                        <div class='alert alert-warning p-4'>
+                            <div class='text-center mb-3'>
                                 <i class="bi bi-pause-circle-fill" style="font-size: 2rem;"></i>
                             </div>
-                            <h4 class='mb-3'>Hourly Limits Reached</h4>
-                            <p class='mb-2'>All providers have hit their ${hourlyLimit}/hour limit</p>
-                            <ul class='list-unstyled small mb-3'>${cappedList}</ul>
-                            <div class='mb-2'>
-                                <small class='text-muted'>Waiting for next hour window...</small>
-                                <div class='mt-2'>
-                                    <small class='text-danger'><strong id='countdown-timer'>60:00</strong> until next hour</small>
+                            <h4 class='mb-3 text-center'>Hourly Rate Limits Reached</h4>
+                            
+                            <div class='row'>
+                                <div class='col-md-6'>
+                                    <h6 class='text-danger mb-2'>🔴 Capped Providers (${batchInfo.capped.length}):</h6>
+                                    <ul class='list-unstyled small'>${cappedList}</ul>
+                                </div>
+                                <div class='col-md-6'>
+                                    <h6 class='text-success mb-2'>🟢 Still Available (${availableDomains.length}):</h6>
+                                    <ul class='list-unstyled small'>${availableDomains.length > 0 ? availableDomains.join('') : '<li class="text-muted">None</li>'}</ul>
                                 </div>
                             </div>
-                            <p class='mb-0'>
-                                <small class='text-muted'>Resuming sends in 1 hour →</small>
-                            </p>
+                            
+                            <hr class='my-3'>
+                            
+                            <div class='text-center'>
+                                <p class='mb-2 text-muted'>Waiting for hourly window reset...</p>
+                                <div>
+                                    <small class='text-danger'><strong id='countdown-timer'>60:00</strong> until next hour</strong></small>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 `;
