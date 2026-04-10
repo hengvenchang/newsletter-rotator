@@ -10,10 +10,9 @@
  */
 
 // Database connection settings
-define('DB_HOST', '127.0.0.1');
-define('DB_USER', 'newsletter-rotator');
-define('DB_PASS', '8np3r52cr8u');
-define('DB_NAME', 'newsletter');
+define('DB_HOST', 'mysql.railway.internal');
+define('DB_USER', 'root');
+define('DB_PASS', 'CXXQhBuiOkAcyUQWgtwiaxMxLZjpkzVS');
+define('DB_NAME', 'railway');
 
-// For other providers, set DB_HOST, DB_USER, DB_PASS, DB_NAME in your environment
 ?>
