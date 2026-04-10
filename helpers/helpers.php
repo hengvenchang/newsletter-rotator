@@ -78,6 +78,21 @@ function normalizeDomain($domain) {
         return 'mydomain';
     }
     
+    // Normalize all Seznam variants: seznam.com, seznam.co.uk, seznam.de, etc.
+    if (preg_match('/^seznam\./', $domain)) {
+        return 'seznam';
+    }
+    
+    // Normalize all Tuta variants: tuta.com, tuta.co.uk, tuta.de, etc.
+    if (preg_match('/^tuta\./', $domain)) {
+        return 'tuta';
+    }
+    
+    // Normalize all Yahoo variants: yahoo.com, yahoo.co.uk, yahoo.de, etc.
+    if (preg_match('/^yahoo\./', $domain)) {
+        return 'yahoo';
+    }
+    
     return $domain;
 }
 
