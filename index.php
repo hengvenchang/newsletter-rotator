@@ -405,10 +405,16 @@ $hourlyLimitJs = $rotator->getHourlyLimit();
                                 <i class="bi bi-pause-circle-fill" style="font-size: 2rem;"></i>
                             </div>
                             <h4 class='mb-3'>Hourly Limits Reached</h4>
-                            <p class='mb-2'>All providers have hit their 10/hour limit</p>
+                            <p class='mb-2'>All providers have hit their ${hourlyLimit}/hour limit</p>
                             <ul class='list-unstyled small mb-3'>${cappedList}</ul>
+                            <div class='mb-2'>
+                                <small class='text-muted'>Waiting for next hour window...</small>
+                                <div class='mt-2'>
+                                    <small class='text-danger'><strong id='countdown-timer'>60:00</strong> until next hour</small>
+                                </div>
+                            </div>
                             <p class='mb-0'>
-                                <small class='text-muted'>Resetting in 3 seconds... Next hour starting →</small>
+                                <small class='text-muted'>Resuming sends in 1 hour →</small>
                             </p>
                         </div>
                     </div>
@@ -417,6 +423,9 @@ $hourlyLimitJs = $rotator->getHourlyLimit();
                 const statusElement = document.createElement('div');
                 statusElement.innerHTML = cappedStatusHTML;
                 container.appendChild(statusElement);
+                
+                // Start countdown timer
+                startCountdownTimer(3600); // 3600 seconds = 1 hour
                 return;
             }
             
@@ -556,9 +565,9 @@ $hourlyLimitJs = $rotator->getHourlyLimit();
             const delay = cumulativeDelay;
             cumulativeDelay += displayInterval;
             
-            // Add extra delay for capped status (3 seconds) and hour separator (2 seconds)
+            // Add extra delay for capped status (1 hour = 3600 seconds) and hour separator (2 seconds)
             if (batch.isCappedStatus) {
-                cumulativeDelay += 3000; // Extra 3 seconds to show capped message
+                cumulativeDelay += 3600000; // Wait full 1 hour for next hour to arrive
             } else if (batch.isHourSeparator) {
                 cumulativeDelay += 2000; // Extra 2 seconds to show hour separator
             }
@@ -617,6 +626,27 @@ $hourlyLimitJs = $rotator->getHourlyLimit();
             `;
 
             document.getElementById('rate-limit-content').innerHTML = html;
+        }
+
+        // Countdown timer for hourly limit waiting period
+        function startCountdownTimer(seconds) {
+            let remaining = seconds;
+            const timerElement = document.getElementById('countdown-timer');
+            
+            const interval = setInterval(() => {
+                remaining--;
+                const mins = Math.floor(remaining / 60);
+                const secs = remaining % 60;
+                const timeStr = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+                
+                if (timerElement) {
+                    timerElement.textContent = timeStr;
+                }
+                
+                if (remaining <= 0) {
+                    clearInterval(interval);
+                }
+            }, 1000); // Update every second
         }
 
         // Render statistics
