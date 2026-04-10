@@ -182,36 +182,58 @@ class Rotator {
                 }
             }
 
-            // --- TRICKY LOGIC: Round-robin interleaving of available providers ---
-            // This ensures that each batch contains a mix of providers, so no single provider
-            // exceeds its hourly limit. We take one subscriber from each provider in turn.
-            $rotated = [];
+            // round-robin interleaving of available providers ---
+            // This ensures fair distribution regardless of subscriber count per provider.
+            // We cycle through each available provider repeatedly, taking one subscriber
+            // per rotation, rather than assuming equal distribution.
+            $batch = [];
+            $domainQueues = [];
             $domains = $availableProviders;
             sort($domains); // Sort for consistent ordering
 
-            if (!empty($domains)) {
-                // Find the maximum number of subscribers in available domains
-                $maxLen = max(array_map(function($d) use ($subscribers) {
-                    return count($subscribers[$d]);
-                }, $domains));
-
-                // Round-robin selection: take one from each available domain in order
-                for ($i = 0; $i < $maxLen; $i++) {
-                    foreach ($domains as $domain) {
-                        if (isset($subscribers[$domain][$i])) {
-                            // Check if adding this would exceed the hourly limit
-                            $currentCount = $providerCounts[$domain] ?? 0;
-                            if ($currentCount < $this->hourlyLimit) {
-                                $rotated[] = $subscribers[$domain][$i];
-                                $providerCounts[$domain] = $currentCount + 1;
-                            }
-                        }
-                    }
-                }
+            // Create a queue of unsent subscribers for each available domain
+            foreach ($domains as $domain) {
+                $domainQueues[$domain] = array_values($subscribers[$domain]);
             }
 
-            // Extract the requested batch size from rotated list
-            $batch = array_slice($rotated, 0, $batchSize);
+            // Round-robin through domains, taking one subscriber per rotation
+            $currentIndex = 0;
+            while (count($batch) < $batchSize) {
+                $addedInCycle = false;
+
+                // One full rotation through available domains
+                for ($i = 0; $i < count($domains); $i++) {
+                    if (count($batch) >= $batchSize) {
+                        break;
+                    }
+
+                    $domain = $domains[$currentIndex % count($domains)];
+                    $currentIndex++;
+
+                    // Skip if domain queue is empty
+                    if (empty($domainQueues[$domain])) {
+                        continue;
+                    }
+
+                    $currentCount = $providerCounts[$domain] ?? 0;
+
+                    // Skip if domain hit hourly limit
+                    if ($currentCount >= $this->hourlyLimit) {
+                        continue;
+                    }
+
+                    // Add subscriber from this domain
+                    $sub = array_shift($domainQueues[$domain]);
+                    $batch[] = $sub;
+                    $providerCounts[$domain] = $currentCount + 1;
+                    $addedInCycle = true;
+                }
+
+                // If nothing was added in a full cycle, we're done
+                if (!$addedInCycle) {
+                    break;
+                }
+            }
 
             // --- TRICKY LOGIC: Marking as sent ---
             // We immediately mark each selected subscriber as sent to prevent re-sending
